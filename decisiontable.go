@@ -51,23 +51,32 @@ func apply(req interface{}) interface{} {
 			}
 
 			cndFieldName := cndType.Field(i).Name
-			cndFieldValue := cndValue.Field(i)
+			cndFieldValue := reflect.ValueOf(cndValue.Field(i).Interface())
 			reqFieldValue := reqValue.FieldByName(cndFieldName)
 
 			if cndFieldValue.Kind() == reflect.Func {
-				res := cndFieldValue.Call([]reflect.Value{reqFieldValue})
+				cndFieldValueType := cndFieldValue.Type()
+				n := cndFieldValueType.NumIn()
+				if n != 1 {
+					panic("N is " + string(n))
+				}
+
+				res := cndFieldValue.Call([]reflect.Value{reflect.ValueOf(reqFieldValue)})
 				if len(res) == 0 {
 					panic("No results!")
 				}
 				if res[0].Bool() {
 					continue
 				}
+				match = false
+				break
 			}
 
 			if eq(cndFieldValue, reqFieldValue) {
 				continue
 			}
 			match = false
+			break
 		}
 
 		if match {
@@ -79,38 +88,45 @@ func apply(req interface{}) interface{} {
 
 func eq(cnd reflect.Value, req reflect.Value) bool {
 	if cnd.Kind() != req.Kind() {
-		panic("different types")
+		panic("different types: " + cnd.Kind().String() + "!=" + req.Kind().String())
 	}
 
-	switch cnd.Kind() {
+	cndKind := reflect.TypeOf(cnd.Interface()).Kind()
+	var res bool
+	switch cndKind {
 	case reflect.Bool:
-		return cnd.Bool() == req.Bool()
+		res = cnd.Bool() == req.Bool()
 	case reflect.Int:
-		return cnd.Int() == req.Int()
+		res = cnd.Int() == req.Int()
 	case reflect.String:
-		return cnd.String() == req.String()
-
+		res = cnd.String() == req.String()
 	default:
-		panic("unsupported type")
+		panic("unsupported kind " + cndKind.String())
 	}
+	return res
 }
 
 func ne(cnd interface{}) interface{} {
-	return func(cnd reflect.Value, req reflect.Value) bool {
-		if cnd.Kind() != req.Kind() {
-			panic("different types")
+	return func(req reflect.Value) bool {
+		cndV := reflect.ValueOf(cnd)
+		reqV := reflect.ValueOf(req.Interface())
+		if cndV.Kind() != reqV.Kind() {
+			panic("different types: " + cndV.Kind().String() + "!=" + reqV.Kind().String())
 		}
 
-		switch cnd.Kind() {
+		cndKind := reflect.TypeOf(cndV.Interface()).Kind()
+		var res bool
+		switch cndKind {
 		case reflect.Bool:
-			return cnd.Bool() != req.Bool()
+			res = cndV.Bool() != reqV.Bool()
 		case reflect.Int:
-			return cnd.Int() != req.Int()
+			res = cndV.Int() != reqV.Int()
 		case reflect.String:
-			return cnd.String() != req.String()
-
+			res = cndV.String() != reqV.String()
 		default:
-			panic("unsupported type")
+			panic("unsupported kind " + cndKind.String())
 		}
+
+		return res
 	}
 }

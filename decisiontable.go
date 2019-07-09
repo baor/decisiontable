@@ -130,3 +130,28 @@ func ne(cnd interface{}) interface{} {
 		return res
 	}
 }
+
+func le(cnd interface{}) interface{} {
+	return func(req reflect.Value) bool {
+		cndV := reflect.ValueOf(cnd)
+		reqV := reflect.ValueOf(req.Interface())
+		if cndV.Kind() != reqV.Kind() {
+			panic("different types: " + cndV.Kind().String() + "!=" + reqV.Kind().String())
+		}
+
+		cndKind := reflect.TypeOf(cndV.Interface()).Kind()
+		var res bool
+		switch cndKind {
+		case reflect.Int:
+			res = reqV.Int() < cndV.Int()
+		case reflect.Float32:
+			res = reqV.Float() < cndV.Float()
+		case reflect.Float64:
+			res = reqV.Float() < cndV.Float()
+		default:
+			panic("unsupported kind " + cndKind.String())
+		}
+
+		return res
+	}
+}

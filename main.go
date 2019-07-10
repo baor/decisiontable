@@ -6,35 +6,35 @@ import (
 
 // domain is a structure of incoming request to which rules are applied
 type domain struct {
-	affiliate   string
-	channel     string
-	origin      string
-	destination string
-	markup      float64
+	Affiliate   string
+	Channel     string
+	Origin      string
+	Destination string
+	Markup      float64
+	Price       float64
 }
 
 func applyRules(r domain) domain {
 	// condition is a flat structure which describes condition columns in decision table
 	type condition struct {
-		affiliate     interface{}
-		channel       interface{}
-		origin        interface{}
-		destination   interface{}
-		originCountry interface{}
-		price         interface{}
+		Affiliate     interface{}
+		Channel       interface{}
+		Origin        interface{}
+		Destination   interface{}
+		OriginCountry interface{}
+		Price         interface{}
 	}
 
 	// action is a structure which describes a response in case of match in the table
 	type action struct {
-		markup float64
+		Markup float64
 	}
 
 	// fill in decision table with rules
-	row(condition{affiliate: "Aff1", channel: ANY, origin: "AMS", destination: "LON"}, action{markup: 2.0})
-	row(condition{affiliate: "Aff2", channel: ANY, origin: "AMS", destination: "LON"}, action{})
-	row(condition{affiliate: ANY, channel: ANY, origin: "AMS", destination: "PAR"}, action{markup: 1.0})
-	row(condition{affiliate: ANY, channel: ANY, origin: "AMS", destination: "LON", price: 11.22}, action{markup: 1.0})
-	row(condition{affiliate: ANY, channel: ANY, origin: "AMS", destination: ne("LON"), price: 11.22}, action{markup: 1.0})
+	row(condition{Affiliate: "Aff1", Channel: ANY, Origin: "AMS", Destination: "LON", Price: ANY}, action{Markup: 2.0})
+	row(condition{Affiliate: "Aff2", Channel: ANY, Origin: "AMS", Destination: "LON", Price: ANY}, action{})
+	row(condition{Affiliate: ANY, Channel: ANY, Origin: "AMS", Destination: ne("LON"), Price: ANY}, action{Markup: 1.0})
+	row(condition{Affiliate: ANY, Channel: ANY, Origin: ANY, Destination: "LON", Price: le(11.22)}, action{Markup: 0.5})
 
 	// apply decision table to the request
 	res := apply(r)
@@ -50,15 +50,15 @@ func applyRules(r domain) domain {
 	fmt.Printf("action: %+v \n", act)
 
 	// assemble action data to response
-	r.markup = act.markup
+	r.Markup = act.Markup
 	return r
 }
 
 func main() {
 	r1 := domain{
-		affiliate:   "Aff1",
-		origin:      "AMS",
-		destination: "LON",
+		Affiliate:   "Aff1",
+		Origin:      "AMS",
+		Destination: "LON",
 	}
 	fmt.Println("r1")
 	fmt.Printf("Before rule: %+v \n", r1)
@@ -66,12 +66,23 @@ func main() {
 	fmt.Printf("After rule: %+v \n", r1)
 
 	r2 := domain{
-		affiliate:   "Aff1",
-		origin:      "NONE",
-		destination: "LON",
+		Affiliate:   "Aff1",
+		Origin:      "NONE",
+		Destination: "LON",
 	}
 	fmt.Println("r2")
 	fmt.Printf("Before rule: %+v \n", r2)
 	r2 = applyRules(r2)
 	fmt.Printf("After rule: %+v \n", r2)
+
+	r3 := domain{
+		Affiliate:   "Aff1",
+		Origin:      "NONE",
+		Destination: "LON",
+		Price:       11.0,
+	}
+	fmt.Println("r3")
+	fmt.Printf("Before rule: %+v \n", r3)
+	r2 = applyRules(r3)
+	fmt.Printf("After rule: %+v \n", r3)
 }

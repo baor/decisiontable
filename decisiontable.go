@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -46,13 +47,17 @@ func apply(req interface{}) interface{} {
 		cndNumField := cndType.NumField()
 
 		for i := 0; i < cndNumField; i++ {
-			if cndValue.Field(i).Type() == reflect.TypeOf(ANY) {
+			cndFieldName := cndType.Field(i).Name
+			cndFieldValueInterface := cndValue.Field(i).Interface()
+			cndFieldValue := reflect.ValueOf(cndFieldValueInterface)
+			reqFieldValue := reqValue.FieldByName(cndFieldName)
+			fmt.Printf("cndFieldName: %s, cndFieldValue: %+v, reqFieldValue: %+v\n", cndFieldName, cndFieldValue, reqFieldValue)
+
+			// skip zero and ANY
+			// TODO: add tests for zero values
+			if cndFieldValueInterface == reflect.Zero(cndValue.Field(i).Type()).Interface() || cndFieldValue.Type() == reflect.TypeOf(ANY) {
 				continue
 			}
-
-			cndFieldName := cndType.Field(i).Name
-			cndFieldValue := reflect.ValueOf(cndValue.Field(i).Interface())
-			reqFieldValue := reqValue.FieldByName(cndFieldName)
 
 			if cndFieldValue.Kind() == reflect.Func {
 				cndFieldValueType := cndFieldValue.Type()
@@ -88,7 +93,7 @@ func apply(req interface{}) interface{} {
 
 func eq(cnd reflect.Value, req reflect.Value) bool {
 	if cnd.Kind() != req.Kind() {
-		panic("different types: " + cnd.Kind().String() + "!=" + req.Kind().String())
+		panic("different kinds: " + cnd.Kind().String() + "!=" + req.Kind().String())
 	}
 
 	cndKind := reflect.TypeOf(cnd.Interface()).Kind()

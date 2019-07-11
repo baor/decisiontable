@@ -10,6 +10,11 @@ type conditionField struct {
 	isAny  bool
 }
 
+type ruleField struct {
+	value        reflect.Value
+	valueOFValue reflect.Value
+}
+
 type decision struct {
 	condition map[string]conditionField
 	action    interface{}
@@ -63,14 +68,29 @@ func row(cnd interface{}, action interface{}) {
 	return
 }
 
-func apply(req interface{}) interface{} {
+func apply(inRule interface{}) interface{} {
 	if len(tbl) == 0 {
 		panic("table is empty")
 	}
 
-	//reqType := reflect.TypeOf(req)
-	reqValue := reflect.ValueOf(req)
+	// parse incoming rule
+	ruleType := reflect.TypeOf(inRule)
+	ruleValue := reflect.ValueOf(inRule)
+	ruleNumField := ruleType.NumField()
 
+	// parse condition
+	inRuleParsed := map[string]ruleField{}
+	for i := 0; i < ruleNumField; i++ {
+		ruleFieldValueInterface := ruleValue.Field(i).Interface()
+
+		name := ruleType.Field(i).Name
+		inRuleParsed[name] = ruleField{
+			value:        reflect.ValueOf(ruleFieldValueInterface),
+			valueOFValue: reflect.ValueOf(reflect.ValueOf(ruleFieldValueInterface)),
+		}
+	}
+
+	// apply decision table
 	for _, r := range tbl {
 		match := true
 		for name, cndField := range r.condition {
@@ -80,7 +100,7 @@ func apply(req interface{}) interface{} {
 				continue
 			}
 
-			reqFieldValue := reqValue.FieldByName(name)
+			ruleField := inRuleParsed[name]
 
 			if cndField.value.Kind() == reflect.Func {
 				// get number of arguments of the function
@@ -89,7 +109,7 @@ func apply(req interface{}) interface{} {
 					panic("N is " + string(n))
 				}
 
-				res := cndField.value.Call([]reflect.Value{reflect.ValueOf(reqFieldValue)})
+				res := cndField.value.Call([]reflect.Value{ruleField.valueOFValue})
 				if len(res) == 0 {
 					panic("No results!")
 				}
@@ -100,7 +120,7 @@ func apply(req interface{}) interface{} {
 				break
 			}
 
-			if eq(cndField.value, reqFieldValue) {
+			if eq(cndField.value, ruleField.value) {
 				continue
 			}
 			match = false

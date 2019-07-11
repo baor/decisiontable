@@ -4,8 +4,14 @@ import (
 	"reflect"
 )
 
+type conditionField struct {
+	value  reflect.Value
+	isZero bool
+	isAny  bool
+}
+
 type decision struct {
-	condition interface{}
+	condition map[string]conditionField
 	action    interface{}
 }
 
@@ -21,7 +27,35 @@ func init() {
 	tbl = []decision{}
 }
 
-func row(condition interface{}, action interface{}) {
+func row(cnd interface{}, action interface{}) {
+	cndType := reflect.TypeOf(cnd)
+	cndValue := reflect.ValueOf(cnd)
+	cndNumField := cndType.NumField()
+
+	// parse condition
+	condition := map[string]conditionField{}
+	for i := 0; i < cndNumField; i++ {
+		cndFieldValueInterface := cndValue.Field(i).Interface()
+
+		name := cndType.Field(i).Name
+		cndField := conditionField{
+			value: reflect.ValueOf(cndFieldValueInterface),
+		}
+
+		//fmt.Printf("cndFieldName: %s, cndFieldValue: %+v, reqFieldValue: %+v\n", cndFieldName, cndFieldValue, reqFieldValue)
+
+		// skip zero and ANY
+		// TODO: add tests for zero values
+
+		cndField.isZero = cndFieldValueInterface == reflect.Zero(cndValue.Field(i).Type()).Interface()
+
+		if !cndField.isZero {
+			cndField.isAny = cndField.value.Type() == reflect.TypeOf(ANY)
+		}
+
+		condition[name] = cndField
+	}
+
 	tbl = append(tbl, decision{
 		condition: condition,
 		action:    action,
@@ -39,33 +73,23 @@ func apply(req interface{}) interface{} {
 
 	for _, r := range tbl {
 		match := true
-
-		cnd := r.condition
-		cndType := reflect.TypeOf(cnd)
-		cndValue := reflect.ValueOf(cnd)
-		cndNumField := cndType.NumField()
-
-		for i := 0; i < cndNumField; i++ {
-			cndFieldName := cndType.Field(i).Name
-			cndFieldValueInterface := cndValue.Field(i).Interface()
-			cndFieldValue := reflect.ValueOf(cndFieldValueInterface)
-			reqFieldValue := reqValue.FieldByName(cndFieldName)
-			//fmt.Printf("cndFieldName: %s, cndFieldValue: %+v, reqFieldValue: %+v\n", cndFieldName, cndFieldValue, reqFieldValue)
-
+		for name, cndField := range r.condition {
 			// skip zero and ANY
 			// TODO: add tests for zero values
-			if cndFieldValueInterface == reflect.Zero(cndValue.Field(i).Type()).Interface() || cndFieldValue.Type() == reflect.TypeOf(ANY) {
+			if cndField.isZero || cndField.isAny {
 				continue
 			}
 
-			if cndFieldValue.Kind() == reflect.Func {
-				cndFieldValueType := cndFieldValue.Type()
-				n := cndFieldValueType.NumIn()
+			reqFieldValue := reqValue.FieldByName(name)
+
+			if cndField.value.Kind() == reflect.Func {
+				// get number of arguments of the function
+				n := cndField.value.Type().NumIn()
 				if n != 1 {
 					panic("N is " + string(n))
 				}
 
-				res := cndFieldValue.Call([]reflect.Value{reflect.ValueOf(reqFieldValue)})
+				res := cndField.value.Call([]reflect.Value{reflect.ValueOf(reqFieldValue)})
 				if len(res) == 0 {
 					panic("No results!")
 				}
@@ -76,7 +100,7 @@ func apply(req interface{}) interface{} {
 				break
 			}
 
-			if eq(cndFieldValue, reqFieldValue) {
+			if eq(cndField.value, reqFieldValue) {
 				continue
 			}
 			match = false

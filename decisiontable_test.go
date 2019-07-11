@@ -47,16 +47,16 @@ func Test_apply_le_1(t *testing.T) {
 	}
 
 	type action struct {
-		markup float64
+		Markup float64
 	}
 
 	// fill in decision table with rules
-	row(condition{Price: le(100.10)}, action{markup: 1.5})
+	row(condition{Price: le(100.10)}, action{Markup: 1.5})
 
 	// Act
 	res := apply(condition{Price: 100.00})
 	assert.NotNil(t, res)
-	assert.Equal(t, float64(1.5), res.(action).markup)
+	assert.Equal(t, float64(1.5), res.(action).Markup)
 
 	res = apply(condition{Price: 100.20})
 	assert.Nil(t, res)
@@ -64,17 +64,24 @@ func Test_apply_le_1(t *testing.T) {
 
 func Benchmark_apply_le_1(b *testing.B) {
 	type condition struct {
-		Affiliate interface{}
-		Channel   interface{}
-		Price     interface{}
+		C1    interface{}
+		C2    interface{}
+		C3    interface{}
+		C4    interface{}
+		C5    interface{}
+		C6    interface{}
+		C7    interface{}
+		C8    interface{}
+		C9    interface{}
+		Price interface{}
 	}
 
 	type action struct {
-		markup float64
+		Markup float64
 	}
 
 	for i := 0; i < 50; i++ {
-		row(condition{Affiliate: ANY, Channel: ANY, Price: le(100.10)}, action{markup: 1.5})
+		row(condition{Price: le(100.10)}, action{Markup: 1.5})
 	}
 	// fill in decision table with rules
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -51,7 +50,7 @@ func apply(req interface{}) interface{} {
 			cndFieldValueInterface := cndValue.Field(i).Interface()
 			cndFieldValue := reflect.ValueOf(cndFieldValueInterface)
 			reqFieldValue := reqValue.FieldByName(cndFieldName)
-			fmt.Printf("cndFieldName: %s, cndFieldValue: %+v, reqFieldValue: %+v\n", cndFieldName, cndFieldValue, reqFieldValue)
+			//fmt.Printf("cndFieldName: %s, cndFieldValue: %+v, reqFieldValue: %+v\n", cndFieldName, cndFieldValue, reqFieldValue)
 
 			// skip zero and ANY
 			// TODO: add tests for zero values
@@ -148,11 +147,36 @@ func le(cnd interface{}) interface{} {
 		var res bool
 		switch cndKind {
 		case reflect.Int:
-			res = reqV.Int() < cndV.Int()
+			res = reqV.Int() <= cndV.Int()
 		case reflect.Float32:
-			res = reqV.Float() < cndV.Float()
+			res = reqV.Float() <= cndV.Float()
 		case reflect.Float64:
-			res = reqV.Float() < cndV.Float()
+			res = reqV.Float() <= cndV.Float()
+		default:
+			panic("unsupported kind " + cndKind.String())
+		}
+
+		return res
+	}
+}
+
+func ge(cnd interface{}) interface{} {
+	return func(req reflect.Value) bool {
+		cndV := reflect.ValueOf(cnd)
+		reqV := reflect.ValueOf(req.Interface())
+		if cndV.Kind() != reqV.Kind() {
+			panic("different types: " + cndV.Kind().String() + "!=" + reqV.Kind().String())
+		}
+
+		cndKind := reflect.TypeOf(cndV.Interface()).Kind()
+		var res bool
+		switch cndKind {
+		case reflect.Int:
+			res = reqV.Int() >= cndV.Int()
+		case reflect.Float32:
+			res = reqV.Float() >= cndV.Float()
+		case reflect.Float64:
+			res = reqV.Float() >= cndV.Float()
 		default:
 			panic("unsupported kind " + cndKind.String())
 		}
